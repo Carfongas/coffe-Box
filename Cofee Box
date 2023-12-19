@@ -1,0 +1,101 @@
+#property strict
+
+// Parámetros del indicador
+input int lookbackBars = 100;
+input double tpPercentage1 = 60;
+input double tpPercentage2 = 100;
+input double slPercentage = 60;
+
+// Variables globales
+int tp1Line, tp2Line, slLine;
+
+//+------------------------------------------------------------------+
+//| Expert initialization function                                   |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+    // Configuración de la hora del servidor
+    int serverTimeZone = TimeCurrent() - TimeLocal();
+    if (serverTimeZone != 0)
+        return(INIT_FAILED); // La hora del servidor y local deben ser iguales
+
+    // Crear líneas de caja
+    CreateBoxLines();
+
+    return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Expert tick function                                             |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+    // Obtener la hora actual
+    datetime currentTime = iTime(_Symbol, PERIOD_M5, 0);
+
+    // Eliminar objetos gráficos existentes
+    ObjectDelete(tp1Line);
+    ObjectDelete(tp2Line);
+    ObjectDelete(slLine);
+
+    // Calcular los niveles de la caja
+    double boxHigh = iHigh(_Symbol, PERIOD_D1, 0);
+    double boxLow = iLow(_Symbol, PERIOD_D1, 0);
+    double boxRange = boxHigh - boxLow;
+
+    // Verificar si es hora de operar
+    if ((Hour() >= 10 && Hour() < 12) || (Hour() >= 17 && Hour() < 19)) {
+        // Verificar si el cierre está por encima del máximo
+        if (Close[0] > boxHigh) {
+            // Calcular niveles de TP y SL
+            double tpLevel1 = boxHigh + (boxRange * tpPercentage1 / 100);
+            double tpLevel2 = boxHigh + (boxRange * tpPercentage2 / 100);
+            double slLevel = boxLow - (boxRange * slPercentage / 100);
+
+            // Dibujar líneas
+            tp1Line = ObjectCreate(0, "TP1_Line", OBJ_TREND, 0, Time[0], tpLevel1);
+            ObjectSetInteger(0, "TP1_Line", OBJPROP_COLOR, clrBlue);
+            ObjectSetInteger(0, "TP1_Line", OBJPROP_RAY_RIGHT, true);
+            ObjectSetInteger(0, "TP1_Line", OBJPROP_STYLE, STYLE_SOLID);
+            ObjectSetInteger(0, "TP1_Line", OBJPROP_WIDTH, 2);
+
+            tp2Line = ObjectCreate(0, "TP2_Line", OBJ_TREND, 0, Time[0], tpLevel2);
+            ObjectSetInteger(0, "TP2_Line", OBJPROP_COLOR, clrGreen);
+            ObjectSetInteger(0, "TP2_Line", OBJPROP_RAY_RIGHT, true);
+            ObjectSetInteger(0, "TP2_Line", OBJPROP_STYLE, STYLE_SOLID);
+            ObjectSetInteger(0, "TP2_Line", OBJPROP_WIDTH, 2);
+
+            slLine = ObjectCreate(0, "SL_Line", OBJ_TREND, 0, Time[0], slLevel);
+            ObjectSetInteger(0, "SL_Line", OBJPROP_COLOR, clrRed);
+            ObjectSetInteger(0, "SL_Line", OBJPROP_RAY_RIGHT, true);
+            ObjectSetInteger(0, "SL_Line", OBJPROP_STYLE, STYLE_SOLID);
+            ObjectSetInteger(0, "SL_Line", OBJPROP_WIDTH, 2);
+        }
+    }
+    
+    // Realizar el análisis estadístico aquí
+    // ...
+}
+
+// Función para crear líneas de caja
+void CreateBoxLines()
+{
+    datetime now = TimeLocal();
+    datetime startOfDay = now - TimeHour(now) * 3600 - TimeMinute(now) * 60;
+    int startBar = iBarShift(_Symbol, PERIOD_D1, startOfDay, false);
+    double maxBox = iHigh(_Symbol, PERIOD_D1, startBar);
+    double minBox = iLow(_Symbol, PERIOD_D1, startBar);
+
+    ObjectCreate(0, "MaxBoxLine", OBJ_TREND, 0, startOfDay, maxBox);
+    ObjectSetInteger(0, "MaxBoxLine", OBJPROP_COLOR, clrDodgerBlue);
+    ObjectSetInteger(0, "MaxBoxLine", OBJPROP_RAY_RIGHT, true);
+    ObjectSetInteger(0, "MaxBoxLine", OBJPROP_STYLE, STYLE_SOLID);
+    ObjectSetInteger(0, "MaxBoxLine", OBJPROP_WIDTH, 2);
+
+    ObjectCreate(0, "MinBoxLine", OBJ_TREND, 0, startOfDay, minBox);
+    ObjectSetInteger(0, "MinBoxLine", OBJPROP_COLOR, clrRed);
+    ObjectSetInteger(0, "MinBoxLine", OBJPROP_RAY_RIGHT, true);
+    ObjectSetInteger(0, "MinBoxLine", OBJPROP_STYLE, STYLE_SOLID);
+    ObjectSetInteger(0, "MinBoxLine", OBJPROP_WIDTH, 2);
+}
+
